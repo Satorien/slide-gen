@@ -27,7 +27,7 @@ win:
   target:
     - target: nsis
     - target: portable
-  # icon: build/icon.ico   # 用意したら有効化
+  icon: build/icon.ico
 
 nsis:
   oneClick: false
@@ -39,7 +39,7 @@ mac:
     - target: dmg
       arch: universal
   category: public.app-category.productivity
-  # icon: build/icon.icns
+  icon: build/icon.icns
   # 未署名配布(v1)。証明書を用意したら hardenedRuntime/notarize を有効化する。
 
 linux:
@@ -47,4 +47,4 @@ linux:
     - target: AppImage
     - target: deb
   category: Office
-  # icon: build/icon.png
+  icon: build/icon.png
