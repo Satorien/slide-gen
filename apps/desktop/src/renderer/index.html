@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src * data: blob:; font-src * data:; connect-src 'self' ws: http: https:; frame-src 'self' data:;"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Slide Generator</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header class="toolbar">
+      <div class="brand">Slide&nbsp;Generator</div>
+      <div class="group">
+        <button id="btn-open" title="Markdown を開く">開く</button>
+        <button id="btn-save" title="保存 (Ctrl+S)">保存</button>
+      </div>
+      <div class="group">
+        <label>テーマ</label>
+        <select id="theme-select"></select>
+        <button id="btn-import-theme" title="PPTX からテーマを取り込む">PPTX取込</button>
+      </div>
+      <div class="group right">
+        <label>形式</label>
+        <select id="format-select">
+          <option value="pdf">PDF</option>
+          <option value="pptx">PPTX</option>
+          <option value="png">PNG</option>
+          <option value="html">HTML</option>
+        </select>
+        <button id="btn-export" class="primary">エクスポート</button>
+      </div>
+    </header>
+
+    <main class="panes">
+      <section class="pane editor-pane">
+        <textarea id="editor" spellcheck="false" placeholder="# ここに Markdown を書く"></textarea>
+      </section>
+      <section class="pane preview-pane">
+        <iframe id="preview" sandbox="allow-scripts" title="プレビュー"></iframe>
+      </section>
+    </main>
+
+    <footer class="statusbar">
+      <span id="status-file">無題</span>
+      <span id="status-msg"></span>
+    </footer>
+
+    <script type="module" src="./renderer.js"></script>
+  </body>
+</html>

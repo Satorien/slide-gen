@@ -1,0 +1,31 @@
+{
+  "name": "@slidegen/desktop",
+  "version": "1.0.0",
+  "description": "Slide Generator desktop app (Electron) — Markdown editor with live Marp preview and native export",
+  "private": true,
+  "author": "Satorien",
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "smoke": "electron-vite build && electron scripts/smoke-export.mjs",
+    "package": "electron-vite build && electron-builder",
+    "package:win": "electron-vite build && electron-builder --win",
+    "package:mac": "electron-vite build && electron-builder --mac",
+    "package:linux": "electron-vite build && electron-builder --linux"
+  },
+  "dependencies": {
+    "@slidegen/core": "*",
+    "@marp-team/marp-core": "^4.3.0",
+    "fast-xml-parser": "^4.5.0",
+    "fflate": "^0.8.2",
+    "pptxgenjs": "^4.0.1",
+    "electron-updater": "^6.8.9"
+  },
+  "devDependencies": {
+    "electron": "^42.4.1",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^5.0.0"
+  }
+}
