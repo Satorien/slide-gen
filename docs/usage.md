@@ -1,136 +1,104 @@
-# 使い方
+# 使い方ガイド
 
-Markdown から Marp を用いてスライドを生成するツールの使い方をまとめます。
+Markdown から Marp でスライドを生成するツールの詳細な使い方です。
+**CLI** と **デスクトップアプリ**の両方に対応し、Windows / macOS / Linux で動作します。
 
 ## 目次
 
-- [前提環境](#前提環境)
-- [初回セットアップ](#初回セットアップ)
-- [基本: Markdown からスライド生成](#基本-markdown-からスライド生成)
-- [出力フォーマット](#出力フォーマット)
-- [ライブプレビュー / 監視](#ライブプレビュー--監視)
+- [セットアップ](#セットアップ)
+- [CLI](#cli)
+- [デスクトップアプリ](#デスクトップアプリ)
 - [テーマ](#テーマ)
-- [PPTX からテーマを抽出する](#pptx-からテーマを抽出する)
+- [PPTX からテーマを抽出](#pptx-からテーマを抽出)
 - [Markdown の書き方](#markdown-の書き方)
+- [出力形式の仕組み](#出力形式の仕組み)
+- [ビルドと配布](#ビルドと配布)
 - [トラブルシューティング](#トラブルシューティング)
 
 ---
 
-## 前提環境
+## セットアップ
 
-| ツール | 用途 | 備考 |
-| ------ | ---- | ---- |
-| [fnm](https://github.com/Schniz/fnm) | Node のバージョン管理 | `.node-version` で固定 |
-| Node (Marp CLI) | Markdown → スライド変換 | `npm install` でローカル導入 |
-| [uv](https://docs.astral.sh/uv/) | Python 環境分離 | PPTX テーマ抽出に使用 |
-| Chrome / Edge | PDF・PPTX・PNG 出力 | HTML 出力には不要 |
+Node.js（バージョンは [`.node-version`](../.node-version) に固定）を [fnm](https://github.com/Schniz/fnm) などで用意し、依存をインストールします。
 
-> Node 依存はすべてプロジェクト直下の `node_modules` に入り、Python 依存は
-> `.venv` に隔離されます。グローバル環境は汚しません。
-
-## 初回セットアップ
-
-```powershell
-./scripts/setup.ps1
+```bash
+fnm use --install-if-missing   # または nvm use
+npm install                    # workspace 全体の依存を導入
 ```
 
-これで fnm による Node 導入 + `npm install`、uv による `.venv` 作成までが完了します。
+> 以前必要だった Python / uv は不要になりました（テーマ抽出を JS へ移植済み）。
 
-手動で行う場合:
+## CLI
 
-```powershell
-fnm use --install-if-missing   # .node-version の Node を導入・使用
-npm install                    # Marp CLI をローカル導入
-uv sync                        # Python 仮想環境を作成
+`slidegen` コマンド（= `packages/cli/src/convert.mjs`）が本体です。
+
+```bash
+# ./slides を ./output へ変換（既定 HTML）
+npx slidegen
+npm run build            # 同等（ルートの npm script）
+
+# 形式を指定
+npx slidegen -f pdf
+npx slidegen -f pptx
+npx slidegen -f png
+
+# 単一ファイル / テーマ指定
+npx slidegen slides/example.md -f pdf
+npx slidegen --theme corporate -f pdf
+
+# ライブプレビュー（保存で自動再描画, http://localhost:8080）
+npx slidegen --server
+
+# 変更を監視して自動再生成
+npx slidegen --watch -f pdf
 ```
 
-## 基本: Markdown からスライド生成
+主なオプション:
 
-`slides/` 配下の Markdown を変換し、`output/` に書き出します。
+| オプション | 説明 |
+| ---------- | ---- |
+| `-i, --input <path>` | 入力ファイル/ディレクトリ（既定 `./slides`） |
+| `-o, --output <path>` | 出力ディレクトリ（既定 `./output`） |
+| `-f, --format <fmt>` | `html` / `pdf` / `pptx` / `png`（既定 `html`） |
+| `--theme <name>` | テーマ名 |
+| `-w, --watch` | 監視して自動再生成 |
+| `-s, --server` | プレビューサーバー |
+| `--pptx-editable` | 編集可能 PPTX（要 LibreOffice） |
+| `--` | 以降を marp CLI へそのまま渡す |
 
-```powershell
-# ワンライン(推奨)
-./scripts/build.ps1
-
-# npm 経由
-npm run build
-
-# 直接
-node src/convert.mjs
-```
-
-特定のファイルだけ変換:
-
-```powershell
-./scripts/build.ps1 -Input slides/example.md
-```
-
-## 出力フォーマット
-
-`-Format`(`-f`)で `html` / `pdf` / `pptx` / `png` を選べます(既定は `html`)。
-
-```powershell
-./scripts/build.ps1 -Format pdf
-./scripts/build.ps1 -Format pptx
-./scripts/build.ps1 -Format png
-```
-
-npm スクリプトでも同様:
-
-```powershell
-npm run pdf
-npm run pptx
-npm run png
-```
-
-> **PDF / PPTX / PNG は Chrome / Edge が必要**です。見つからない場合は
-> 環境変数 `CHROME_PATH` でブラウザの実行ファイルを指定してください。
+> **CLI の PDF / PPTX / PNG 出力には Chrome / Chromium / Edge が必要**です。
+> PATH 上に無い場合は環境変数 `CHROME_PATH` で実行ファイルを指定します。
 >
-> ```powershell
-> $env:CHROME_PATH = "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
-> ./scripts/build.ps1 -Format pdf
+> ```bash
+> # 例 (macOS)
+> CHROME_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" npx slidegen -f pdf
 > ```
+>
+> デスクトップアプリはこの依存がありません（内蔵 Chromium を使用）。
 
-### 編集可能な PPTX
+## デスクトップアプリ
 
-既定の PPTX は各スライドを画像として埋め込みます。テキストを後から編集できる
-PPTX が必要な場合は `-PptxEditable` を付けます(LibreOffice Impress が必要)。
-
-```powershell
-./scripts/build.ps1 -Format pptx -PptxEditable
+```bash
+npm run desktop:dev      # 開発実行（ホットリロード）
+npm run desktop:build    # アプリバンドルをビルド
 ```
 
-## ライブプレビュー / 監視
+画面構成:
 
-ブラウザで編集結果をリアルタイム確認:
+- 左ペイン: Markdown エディタ
+- 右ペイン: リアルタイムプレビュー
+- ツールバー: 開く / 保存 / テーマ選択 / PPTX取込 / 形式選択 / エクスポート
 
-```powershell
-./scripts/preview.ps1
-# → http://localhost:8080 を開く
-```
-
-ファイル出力を監視して自動再生成:
-
-```powershell
-./scripts/watch.ps1 -Format pdf
-```
+エクスポートは PDF / PPTX / PNG / HTML に対応し、外部ブラウザを必要としません。
+プレビューと出力は同じレンダラ（`@slidegen/core` の `renderDeck`）を使うため、見た目が一致します。
 
 ## テーマ
 
-組み込みテーマ `default` / `gaia` / `uncover` に加え、`src/themes/` に置いた
-独自テーマを使えます。標準で `corporate` を同梱しています。
+組み込みの Marp テーマ `default` / `gaia` / `uncover` に加え、独自テーマ `corporate` を同梱しています。
 
-利用可能なテーマを一覧:
+テーマの指定方法:
 
-```powershell
-node src/convert.mjs --list-themes
-# または
-npm run themes
-```
-
-テーマの指定方法は 2 通り:
-
-1. Markdown のフロントマターで指定(推奨)
+1. フロントマターで指定（推奨）
 
    ```markdown
    ---
@@ -139,39 +107,31 @@ npm run themes
    ---
    ```
 
-2. 変換時に指定(フロントマターを上書き)
+2. CLI で指定（`--theme`）/ デスクトップのテーマ選択
 
-   ```powershell
-   ./scripts/build.ps1 -Theme corporate -Format pdf
-   ```
+独自テーマを追加するには、CSS ファイルの先頭に `/* @theme <name> */` を書きます。
+CLI はカレントの `./themes/` を、デスクトップはユーザーデータの `themes/` フォルダを自動で読み込みます。
+`packages/core/themes/corporate.css` をコピーして `:root` の CSS 変数（色・フォント）を編集するのが簡単です。
 
-独自テーマを追加するには `src/themes/<name>.css` を作り、先頭に
-`/* @theme <name> */` を書きます。`corporate.css` をコピーして
-色・フォント(`:root` の CSS 変数)を編集するのが簡単です。
+## PPTX からテーマを抽出
 
-## PPTX からテーマを抽出する
+既存 PowerPoint のブランド配色・フォントを Marp テーマとして再利用できます。
 
-既存の PowerPoint のブランド配色・フォントを Marp テーマとして再利用できます。
+```bash
+# CLI
+npx slidegen extract-theme data/pptx/yourfile.pptx -n mybrand
+# → ./themes/mybrand.css を生成
+npx slidegen --theme mybrand -f pdf
+```
 
-1. PPTX を `data/pptx/` に置く
-2. 抽出を実行
+デスクトップではツールバーの **PPTX取込** から同じことができます（テーマはユーザーデータに保存）。
 
-   ```powershell
-   ./scripts/extract-theme.ps1 data/pptx/yourfile.pptx -Name mybrand
-   ```
-
-3. `src/themes/mybrand.css` が生成されるので、テーマとして指定
-
-   ```powershell
-   ./scripts/build.ps1 -Theme mybrand -Format pdf
-   ```
-
-抽出されるのは配色スキーム(accent / 背景 / 文字色など)とフォントです。
+抽出されるのは配色スキーム（accent / 背景 / 文字色など）とフォントです。
 レイアウトそのものは移植されないため、生成後に CSS を微調整してください。
 
 ## Markdown の書き方
 
-- スライドの区切りは `---`(水平線)
+- スライドの区切りは `---`（水平線）
 - 先頭のフロントマターで `theme` / `paginate` / `size` などを指定
 - スライド個別の装飾はコメントで指定
 
@@ -181,15 +141,48 @@ npm run themes
   <!-- _backgroundColor: #000 -->  背景色を個別指定
   ```
 
-詳細な記法は [Marp 公式ドキュメント](https://marpit.marp.app/) を参照してください。
-サンプルは [`slides/example.md`](../slides/example.md) にあります。
+`corporate` テーマは `title` / `section` クラスを用意しています。
+サンプルは [`slides/example.md`](../slides/example.md) を参照してください。
+記法の詳細は [Marp 公式ドキュメント](https://marpit.marp.app/) を参照。
+
+## 出力形式の仕組み
+
+| | CLI | デスクトップ |
+| --- | --- | --- |
+| レンダリング | marp-cli | `@slidegen/core`（marp-core） |
+| HTML | marp-cli | core の HTML 文書生成 |
+| PDF | marp-cli（要ブラウザ） | Electron `printToPDF`（ベクター） |
+| PNG | marp-cli（要ブラウザ） | Electron `capturePage`（スライド毎） |
+| PPTX | marp-cli（要ブラウザ） | `pptxgenjs`（各スライド画像を全面背景） |
+
+デスクトップの PPTX は画像ベース（テキスト非編集）で、marp-cli の既定 PPTX と同じ方式です。
+
+## ビルドと配布
+
+```bash
+# 現在の OS 向けインストーラを作成（apps/desktop/dist/ に出力）
+npm run package --workspace @slidegen/desktop -- --win    # / --mac / --linux
+```
+
+`v*` タグを push すると GitHub Actions が 3 OS でビルドし、GitHub Releases へ公開します
+（[`.github/workflows/release.yml`](../.github/workflows/release.yml)）。
+
+成果物:
+
+- Windows: NSIS インストーラ + portable exe
+- macOS: universal dmg（arm64 + x64）
+- Linux: AppImage + deb
+
+> **v1 は未署名**です。初回起動時は、macOS は「右クリック → 開く」、Windows は
+> 「詳細情報 → 実行」（または portable exe）で起動します。署名/公証は後から
+> ビルド構成を変えずに追加できます。macOS の自動更新には署名が必要です。
 
 ## トラブルシューティング
 
 | 症状 | 対処 |
 | ---- | ---- |
-| `marp` が見つからない | `npm install` を実行。`fnm use` で Node を有効化 |
-| PDF 出力でブラウザエラー | `CHROME_PATH` に Chrome/Edge のパスを設定 |
+| CLI で PDF 出力がブラウザエラー | `CHROME_PATH` に Chrome/Edge のパスを設定 |
+| `slidegen` が見つからない | `npm install` を実行し、`fnm use` で Node を有効化 |
 | 日本語フォントが崩れる | テーマの `--font-base` に日本語フォントを追加 |
-| `uv` コマンドが無い | uv を導入(PPTX 抽出のみで必要) |
-| スクリプトが実行できない | `Set-ExecutionPolicy -Scope Process RemoteSigned` を実行 |
+| デスクトップアプリが起動しない（未署名警告） | macOS: 右クリック→開く / Windows: 詳細情報→実行 |
+| デスクトップ出力でフォントが置換される | システムに該当フォントを導入、またはテーマで利用可能なフォントを指定 |
