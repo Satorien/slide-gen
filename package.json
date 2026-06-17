@@ -1,28 +1,36 @@
 {
   "name": "slide-generator",
   "version": "1.0.0",
-  "description": "Generate presentation slides from Markdown using Marp",
+  "description": "Generate presentation slides from Markdown using Marp — CLI and desktop app",
+  "private": true,
   "type": "module",
   "license": "MIT",
-  "keywords": ["marp", "markdown", "slides", "presentation", "pptx", "pdf"],
+  "keywords": [
+    "marp",
+    "markdown",
+    "slides",
+    "presentation",
+    "pptx",
+    "pdf",
+    "electron"
+  ],
   "repository": {
     "type": "git",
     "url": "git+ssh://git@github.com/Satorien/slide-gen.git"
   },
-  "bin": {
-    "slidegen": "src/convert.mjs"
-  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
   "scripts": {
-    "build": "node src/convert.mjs",
-    "watch": "node src/convert.mjs --watch",
-    "preview": "node src/convert.mjs --server",
-    "pdf": "node src/convert.mjs --format pdf",
-    "pptx": "node src/convert.mjs --format pptx",
-    "png": "node src/convert.mjs --format png",
-    "themes": "node src/convert.mjs --list-themes"
-  },
-  "dependencies": {
-    "@marp-team/marp-cli": "^4.2.3"
+    "slidegen": "node packages/cli/src/convert.mjs",
+    "build": "node packages/cli/src/convert.mjs",
+    "preview": "node packages/cli/src/convert.mjs --server",
+    "watch": "node packages/cli/src/convert.mjs --watch",
+    "themes": "node packages/cli/src/convert.mjs --list-themes",
+    "desktop:dev": "npm run dev --workspace @slidegen/desktop",
+    "desktop:build": "npm run build --workspace @slidegen/desktop",
+    "test": "node --test \"packages/core/test/**/*.test.mjs\""
   },
   "engines": {
     "node": ">=18"

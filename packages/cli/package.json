@@ -1,0 +1,19 @@
+{
+  "name": "@slidegen/cli",
+  "version": "1.0.0",
+  "description": "Command-line interface for slide-generator (Markdown → HTML/PDF/PPTX/PNG via Marp)",
+  "type": "module",
+  "bin": {
+    "slidegen": "src/convert.mjs"
+  },
+  "files": [
+    "src"
+  ],
+  "dependencies": {
+    "@marp-team/marp-cli": "^4.2.3",
+    "@slidegen/core": "*"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

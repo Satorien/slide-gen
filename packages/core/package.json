@@ -1,0 +1,21 @@
+{
+  "name": "@slidegen/core",
+  "version": "1.0.0",
+  "description": "Shared rendering and theme-extraction logic for slide-generator (Electron-free, no puppeteer)",
+  "type": "module",
+  "main": "./src/index.mjs",
+  "exports": {
+    ".": "./src/index.mjs",
+    "./themes": "./src/themes.mjs",
+    "./themes/*": "./themes/*"
+  },
+  "files": [
+    "src",
+    "themes"
+  ],
+  "dependencies": {
+    "@marp-team/marp-core": "^4.3.0",
+    "fast-xml-parser": "^4.5.0",
+    "fflate": "^0.8.2"
+  }
+}
