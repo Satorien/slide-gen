@@ -16,7 +16,6 @@
     "package:linux": "electron-vite build && electron-builder --linux"
   },
   "dependencies": {
-    "@slidegen/core": "*",
     "@marp-team/marp-core": "^4.3.0",
     "fast-xml-parser": "^4.5.0",
     "fflate": "^0.8.2",
@@ -24,7 +23,8 @@
     "electron-updater": "^6.8.9"
   },
   "devDependencies": {
-    "electron": "^42.4.1",
+    "@slidegen/core": "*",
+    "electron": "42.4.1",
     "electron-builder": "^26.15.3",
     "electron-vite": "^5.0.0"
   }

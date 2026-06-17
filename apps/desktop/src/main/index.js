@@ -6,6 +6,7 @@
 import { app, BrowserWindow, ipcMain, dialog } from "electron";
 import { join, basename, extname, dirname } from "node:path";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
+import electronUpdater from "electron-updater";
 import { renderDeck, buildHtmlDocument, extractThemeFromPptx } from "@slidegen/core";
 import { getThemes, userThemesDir } from "./themes.js";
 import { exportDeck } from "./export.js";
@@ -159,11 +160,15 @@ app.whenReady().then(() => {
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
+  // 本番ビルドのみ: GitHub Releases から自動更新を確認
+  // (未公開・オフライン時は静かに無視。Promise 拒否も握りつぶす)
+  if (!isDev) {
+    Promise.resolve()
+      .then(() => electronUpdater.autoUpdater.checkForUpdatesAndNotify())
+      .catch(() => {});
+  }
 });
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
-
-// isDev は将来のデバッグ用フラグ(現状未使用箇所がある)
-void isDev;

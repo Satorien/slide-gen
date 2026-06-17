@@ -1,0 +1,40 @@
+name: Release
+
+# v* タグの push で 3 OS のインストーラをビルドし、GitHub Releases へ公開する。
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Test (core)
+        run: npm test
+
+      - name: Build desktop (electron-vite)
+        run: npm run build --workspace @slidegen/desktop
+
+      - name: Package & publish (electron-builder)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run package --workspace @slidegen/desktop -- --publish always
