@@ -1,0 +1,10 @@
+[project]
+name = "slide-generator-tools"
+version = "1.0.0"
+description = "Helper tools for slide-generator: extract Marp themes from PPTX files"
+requires-python = ">=3.10"
+# No external dependencies — uses only stdlib (zipfile, xml.etree)
+dependencies = []
+
+[tool.uv]
+package = false

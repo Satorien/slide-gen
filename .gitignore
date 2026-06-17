@@ -1,0 +1,24 @@
+# Node
+node_modules/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# generated output
+output/*
+!output/.gitkeep
+
+# PPTX template files (add your own, do not commit)
+data/pptx/*
+!data/pptx/.gitkeep
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Claude Code
+.claude/

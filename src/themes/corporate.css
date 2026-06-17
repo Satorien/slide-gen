@@ -1,0 +1,133 @@
+/* @theme corporate */
+
+/*
+ * corporate — General-purpose business theme based on Marp's built-in default.
+ * Edit the :root CSS variables below to change colors and fonts globally.
+ * Themes extracted from PPTX files follow the same variable structure.
+ */
+
+@import "default";
+
+:root {
+  /* ブランドカラー */
+  --brand-primary: #1f6feb;
+  --brand-secondary: #0b3d91;
+  --brand-accent: #f0a202;
+
+  /* 基本色 */
+  --color-background: #ffffff;
+  --color-foreground: #22272e;
+  --color-heading: var(--brand-secondary);
+  --color-link: var(--brand-primary);
+
+  /* フォント */
+  --font-base: "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic UI",
+    "Meiryo", system-ui, sans-serif;
+  --font-heading: var(--font-base);
+  --font-code: "Cascadia Code", "Consolas", "SFMono-Regular", monospace;
+
+  font-family: var(--font-base);
+  color: var(--color-foreground);
+  background-color: var(--color-background);
+}
+
+section {
+  font-family: var(--font-base);
+  color: var(--color-foreground);
+  background-color: var(--color-background);
+  padding: 60px 70px;
+  font-size: 26px;
+  line-height: 1.5;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-heading);
+  color: var(--color-heading);
+}
+
+h1 {
+  font-size: 1.9em;
+  border-bottom: 4px solid var(--brand-primary);
+  padding-bottom: 0.2em;
+}
+
+h2 {
+  font-size: 1.4em;
+}
+
+a {
+  color: var(--color-link);
+}
+
+strong {
+  color: var(--brand-secondary);
+}
+
+/* 箇条書きのマーカー色 */
+ul > li::marker {
+  color: var(--brand-primary);
+}
+
+/* コードブロック */
+code {
+  font-family: var(--font-code);
+}
+pre {
+  border-radius: 8px;
+}
+
+/* テーブル */
+table th {
+  background-color: var(--brand-primary);
+  color: #ffffff;
+}
+
+/* 引用 */
+blockquote {
+  border-left: 6px solid var(--brand-accent);
+  color: #4a5160;
+}
+
+/* ページ番号 */
+section::after {
+  color: #8b95a1;
+  font-size: 0.6em;
+}
+
+/* タイトルスライド用クラス: <!-- _class: title --> */
+section.title {
+  justify-content: center;
+  text-align: center;
+  background: linear-gradient(
+    135deg,
+    var(--brand-secondary) 0%,
+    var(--brand-primary) 100%
+  );
+  color: #ffffff;
+}
+section.title h1 {
+  color: #ffffff;
+  border-bottom: none;
+  font-size: 2.4em;
+}
+section.title h2,
+section.title h3 {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* セクション区切り用クラス: <!-- _class: section --> */
+section.section {
+  justify-content: center;
+  background-color: var(--brand-secondary);
+  color: #ffffff;
+}
+section.section h1,
+section.section h2 {
+  color: #ffffff;
+  border-bottom: none;
+}
