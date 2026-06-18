@@ -109,8 +109,12 @@ function fontStack(fonts, kind) {
 
 /** kebab-case 化。 */
 export function slugify(text) {
-  const s = String(text).trim().toLowerCase().replace(/[^\w-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
-  return s || "extracted";
+  const raw = String(text ?? "").trim().toLowerCase();
+  if (!raw) return "extracted";
+  const s = raw.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+  if (s) return s;
+  const hash = [...raw].reduce((acc, ch) => (acc * 31 + ch.codePointAt(0)) >>> 0, 0).toString(36);
+  return `extracted-${hash}`;
 }
 
 /** 抽出結果から corporate.css 互換の Marp テーマ CSS を生成する。 */

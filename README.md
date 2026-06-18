@@ -30,7 +30,7 @@ slide-generator/
 
 | Tool | Purpose |
 | ---- | ------- |
-| [Node.js](https://nodejs.org/) ≥ 18 (via [fnm](https://github.com/Schniz/fnm)) | Runs everything |
+| [Node.js](https://nodejs.org/) 22 (via [fnm](https://github.com/Schniz/fnm)) | Runs everything |
 | Chrome / Chromium / Edge | **CLI only** — needed for PDF / PPTX / PNG export. The desktop app does **not** need this. |
 
 > Python is no longer required — theme extraction was ported to JavaScript.
@@ -53,7 +53,7 @@ node packages/cli/src/convert.mjs --server # live preview at http://localhost:80
 
 # or use the linked bin
 npx slidegen slides/example.md -f pptx
-npx slidegen extract-theme data/pptx/brand.pptx -n mybrand
+npx slidegen extract-theme data/pptx/brand.pptx --name mybrand
 npx slidegen --theme mybrand -f pdf
 npx slidegen list-themes
 ```

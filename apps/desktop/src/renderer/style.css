@@ -16,7 +16,7 @@ html,
 body {
   margin: 0;
   height: 100%;
-  font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Meiryo", system-ui, sans-serif;
+  font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", Meiryo, system-ui, sans-serif;
   background: var(--bg);
   color: var(--fg);
 }
@@ -106,7 +106,7 @@ button:disabled {
   padding: 16px;
   background: var(--bg);
   color: var(--fg);
-  font-family: "Cascadia Code", "Consolas", "SFMono-Regular", monospace;
+  font-family: "Cascadia Code", Consolas, SFMono-Regular, monospace;
   font-size: 14px;
   line-height: 1.6;
   tab-size: 2;

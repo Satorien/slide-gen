@@ -86,7 +86,7 @@ export async function exportPdf(markdown, opts, outPath) {
     const data = await win.webContents.printToPDF({
       printBackground: true,
       preferCSSPageSize: true,
-      margins: { marginType: "none" },
+      margins: { top: 0, bottom: 0, left: 0, right: 0 },
       pageSize: { width: size.width / 96, height: size.height / 96 },
     });
     await writeFile(outPath, data);

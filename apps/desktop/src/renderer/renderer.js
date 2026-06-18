@@ -46,13 +46,16 @@ paginate: true
 `;
 
 let renderTimer = null;
+let renderSeq = 0;
 function scheduleRender() {
   clearTimeout(renderTimer);
   renderTimer = setTimeout(renderPreview, 250);
 }
 
 async function renderPreview() {
+  const seq = ++renderSeq;
   const res = await api.render(els.editor.value, els.theme.value || undefined);
+  if (seq !== renderSeq) return;
   if (!res || res.error) {
     setStatus(res?.error ? `描画エラー: ${res.error}` : "描画に失敗", "err");
     return;
@@ -135,12 +138,17 @@ els.export.addEventListener("click", async () => {
   const format = els.format.value;
   els.export.disabled = true;
   setStatus(`${format.toUpperCase()} を生成中...`);
-  const res = await api.exportDeck(els.editor.value, els.theme.value || undefined, format);
-  els.export.disabled = false;
-  if (res?.canceled) return setStatus("");
-  if (res?.error) return setStatus(`出力エラー: ${res.error}`, "err");
-  const n = res.files?.length || 0;
-  setStatus(`出力しました: ${n === 1 ? res.files[0] : n + " ファイル"}`, "ok");
+  try {
+    const res = await api.exportDeck(els.editor.value, els.theme.value || undefined, format);
+    if (res?.canceled) return setStatus("");
+    if (res?.error) return setStatus(`出力エラー: ${res.error}`, "err");
+    const n = res.files?.length || 0;
+    setStatus(`出力しました: ${n === 1 ? res.files[0] : n + " ファイル"}`, "ok");
+  } catch (err) {
+    setStatus(`出力エラー: ${err?.message || String(err)}`, "err");
+  } finally {
+    els.export.disabled = false;
+  }
 });
 
 els.importTheme.addEventListener("click", async () => {
