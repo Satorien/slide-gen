@@ -32,6 +32,9 @@ function createWindow() {
 
   win.on("ready-to-show", () => win.show());
 
+  // 開発時はレンダラのエラーを即見られるよう DevTools を開く。
+  if (isDev) win.webContents.openDevTools({ mode: "detach" });
+
   if (process.env.ELECTRON_RENDERER_URL) {
     win.loadURL(process.env.ELECTRON_RENDERER_URL);
   } else {
@@ -43,18 +46,12 @@ function createWindow() {
 // --- プレビュー用 HTML 文書(スライドをiframe幅に合わせて縮小表示) ---
 function buildPreviewDoc(markdown, theme, themes) {
   const rendered = renderDeck(markdown, { theme, themes });
-  const { width } = rendered.size;
   const css =
     "html,body{margin:0;background:#3b3f45;}" +
-    "body{display:flex;flex-direction:column;align-items:center;gap:18px;padding:18px;box-sizing:border-box;}" +
-    "section{box-shadow:0 6px 20px rgba(0,0,0,.45);}";
-  const script =
-    `<script>(function(){var W=${width};function fit(){var vw=document.documentElement.clientWidth-36;` +
-    `var z=Math.min(1,vw/W);document.querySelectorAll('section').forEach(function(s){s.style.zoom=z;});}` +
-    `window.addEventListener('resize',fit);document.addEventListener('DOMContentLoaded',fit);fit();})();<\/script>`;
-  const doc = buildHtmlDocument(rendered, {
-    extraHead: `<style>${css}</style>${script}`,
-  });
+    "body{padding:18px;box-sizing:border-box;}" +
+    ".marpit{display:flex;flex-direction:column;gap:18px;align-items:stretch;}" +
+    "svg[data-marpit-svg]{display:block;width:100%;height:auto;box-shadow:0 6px 20px rgba(0,0,0,.45);border-radius:3px;}";
+  const doc = buildHtmlDocument(rendered, { extraHead: `<style>${css}</style>` });
   return { doc, size: rendered.size, slideCount: rendered.slideCount };
 }
 

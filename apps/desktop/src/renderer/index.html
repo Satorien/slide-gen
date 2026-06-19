@@ -21,6 +21,7 @@
       <div class="group">
         <label>テーマ</label>
         <select id="theme-select"></select>
+        <button id="btn-refresh" title="プレビューを再描画">再描画</button>
         <button id="btn-import-theme" title="PPTX からテーマを取り込む">PPTX取込</button>
       </div>
       <div class="group right">
@@ -40,6 +41,7 @@
         <textarea id="editor" spellcheck="false" placeholder="# ここに Markdown を書く"></textarea>
       </section>
       <section class="pane preview-pane">
+        <div id="render-indicator" hidden><span class="spinner"></span> 描画中…</div>
         <iframe id="preview" sandbox="allow-scripts" title="プレビュー"></iframe>
       </section>
     </main>

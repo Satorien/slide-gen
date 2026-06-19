@@ -10,8 +10,10 @@ const els = {
   format: document.getElementById("format-select"),
   open: document.getElementById("btn-open"),
   save: document.getElementById("btn-save"),
+  refresh: document.getElementById("btn-refresh"),
   export: document.getElementById("btn-export"),
   importTheme: document.getElementById("btn-import-theme"),
+  indicator: document.getElementById("render-indicator"),
   statusFile: document.getElementById("status-file"),
   statusMsg: document.getElementById("status-msg"),
 };
@@ -54,14 +56,21 @@ function scheduleRender() {
 
 async function renderPreview() {
   const seq = ++renderSeq;
-  const res = await api.render(els.editor.value, els.theme.value || undefined);
-  if (seq !== renderSeq) return;
-  if (!res || res.error) {
-    setStatus(res?.error ? `描画エラー: ${res.error}` : "描画に失敗", "err");
-    return;
+  if (els.indicator) els.indicator.hidden = false;
+  try {
+    const res = await api.render(els.editor.value, els.theme.value || undefined);
+    if (seq !== renderSeq) return;
+    if (!res || res.error) {
+      setStatus(res?.error ? `描画エラー: ${res.error}` : "描画に失敗", "err");
+      return;
+    }
+    els.preview.srcdoc = res.doc;
+    setStatus(`${res.slideCount} スライド`);
+  } catch (err) {
+    if (seq === renderSeq) setStatus(`描画エラー: ${err?.message || String(err)}`, "err");
+  } finally {
+    if (seq === renderSeq && els.indicator) els.indicator.hidden = true;
   }
-  els.preview.srcdoc = res.doc;
-  setStatus(`${res.slideCount} スライド`);
 }
 
 function setStatus(msg, kind = "") {
@@ -114,6 +123,11 @@ els.editor.addEventListener("keydown", (e) => {
 });
 
 els.theme.addEventListener("change", renderPreview);
+
+els.refresh.addEventListener("click", () => {
+  clearTimeout(renderTimer);
+  renderPreview();
+});
 
 els.open.addEventListener("click", async () => {
   const res = await api.openFile();
