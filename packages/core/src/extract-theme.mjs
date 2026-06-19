@@ -3,7 +3,7 @@
  * PPTX から配色・フォントを抽出し、Marp 用テーマ(CSS)を生成する。
  *
  * src/extract_theme.py(Python, 廃止)の JS 移植版。
- * PPTX は実体が ZIP。ppt/theme/themeN.xml の <a:clrScheme>/<a:fontScheme> を読む。
+ * PPTX は実体が ZIP。ppt/theme/themeN.xml の <a:clrScheme>/<a:fontScheme> 等を読む。
  * 依存は純 JS の fflate(unzip) + fast-xml-parser(XML) のみ。
  */
 import { unzipSync, strFromU8 } from "fflate";
@@ -18,6 +18,21 @@ const COLOR_KEYS = [
 
 // Office 標準の system color フォールバック
 const SYS_COLOR_FALLBACK = { windowText: "000000", window: "FFFFFF" };
+const DEFAULT_SLIDE_SIZE_EMU = { slideWidthEmu: 12192000, slideHeightEmu: 6858000 };
+const DEFAULT_CLR_MAP = {
+  bg1: "lt1",
+  tx1: "dk1",
+  bg2: "lt2",
+  tx2: "dk2",
+  accent1: "accent1",
+  accent2: "accent2",
+  accent3: "accent3",
+  accent4: "accent4",
+  accent5: "accent5",
+  accent6: "accent6",
+  hlink: "hlink",
+  folHlink: "folHlink",
+};
 
 const xmlParser = new XMLParser({
   ignoreAttributes: false,
@@ -25,20 +40,34 @@ const xmlParser = new XMLParser({
   removeNSPrefix: false,
 });
 
-/** PPTX(Uint8Array/Buffer/ArrayBuffer) から最初のテーマ XML 文字列を取り出す。 */
-function readThemeXml(pptxBytes) {
-  const u8 =
-    pptxBytes instanceof Uint8Array
-      ? pptxBytes
-      : new Uint8Array(pptxBytes instanceof ArrayBuffer ? pptxBytes : pptxBytes.buffer ?? pptxBytes);
-  const files = unzipSync(u8, {
-    filter: (f) => /^ppt\/theme\/theme\d+\.xml$/.test(f.name),
+function toU8(pptxBytes) {
+  return pptxBytes instanceof Uint8Array
+    ? pptxBytes
+    : new Uint8Array(pptxBytes instanceof ArrayBuffer ? pptxBytes : pptxBytes.buffer ?? pptxBytes);
+}
+
+function readPptxXmlParts(pptxBytes) {
+  const files = unzipSync(toU8(pptxBytes), {
+    filter: (f) =>
+      /^ppt\/theme\/theme\d+\.xml$/.test(f.name) ||
+      f.name === "ppt/presentation.xml" ||
+      /^ppt\/slideMasters\/slideMaster\d+\.xml$/.test(f.name),
   });
-  const names = Object.keys(files).sort();
-  if (names.length === 0) {
+  const themeNames = Object.keys(files).filter((name) => /^ppt\/theme\/theme\d+\.xml$/.test(name)).sort();
+  const masterNames = Object.keys(files).filter((name) => /^ppt\/slideMasters\/slideMaster\d+\.xml$/.test(name)).sort();
+  if (themeNames.length === 0) {
     throw new Error("PPTX 内に theme XML が見つかりませんでした。");
   }
-  return strFromU8(files[names[0]]);
+  return {
+    themeXml: strFromU8(files[themeNames[0]]),
+    presentationXml: files["ppt/presentation.xml"] ? strFromU8(files["ppt/presentation.xml"]) : null,
+    slideMasterXml: masterNames.length > 0 ? strFromU8(files[masterNames[0]]) : null,
+  };
+}
+
+/** PPTX(Uint8Array/Buffer/ArrayBuffer) から最初のテーマ XML 文字列を取り出す。 */
+function readThemeXml(pptxBytes) {
+  return readPptxXmlParts(pptxBytes).themeXml;
 }
 
 /** 配色ノード(dk1 等の中身)から 6桁 HEX を取り出す。 */
@@ -90,6 +119,100 @@ export function parseThemeXml(xml) {
   return { name: theme["@_name"] || "extracted", colors, fonts };
 }
 
+/** presentation.xml からスライドサイズ(EMU)を抽出する。 */
+export function parsePresentation(xml) {
+  if (!xml) return { ...DEFAULT_SLIDE_SIZE_EMU };
+  const doc = xmlParser.parse(xml);
+  const sldSz = doc?.["p:presentation"]?.["p:sldSz"];
+  const width = Number(sldSz?.["@_cx"]);
+  const height = Number(sldSz?.["@_cy"]);
+  return {
+    slideWidthEmu: Number.isFinite(width) && width > 0 ? width : DEFAULT_SLIDE_SIZE_EMU.slideWidthEmu,
+    slideHeightEmu: Number.isFinite(height) && height > 0 ? height : DEFAULT_SLIDE_SIZE_EMU.slideHeightEmu,
+  };
+}
+
+function firstNode(node) {
+  return Array.isArray(node) ? node[0] : node;
+}
+
+function hundredthsToPt(value) {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n / 100 : null;
+}
+
+function normalizeHex(hexValue) {
+  if (!hexValue) return null;
+  const hexText = String(hexValue).replace(/^#/, "").toUpperCase();
+  return /^[0-9A-F]{6}$/.test(hexText) ? hexText : null;
+}
+
+function parseClrMap(master) {
+  const attrs = master?.["p:clrMap"];
+  if (!attrs || typeof attrs !== "object") return { ...DEFAULT_CLR_MAP };
+  const normalized = {};
+  for (const [key, value] of Object.entries(attrs)) {
+    normalized[key.replace(/^@_/, "")] = value;
+  }
+  return { ...DEFAULT_CLR_MAP, ...normalized };
+}
+
+/** schemeClr token を clrMap 経由で clrScheme の 6桁 HEX に解決する。 */
+export function resolveSchemeColor(token, clrMap = DEFAULT_CLR_MAP, clrScheme = {}) {
+  const mapped = clrMap?.[token] || token;
+  return normalizeHex(clrScheme?.[mapped]) || normalizeHex(clrScheme?.[token]) || null;
+}
+
+function resolveSolidFillColor(solidFill, clrMap, clrScheme) {
+  if (!solidFill) return null;
+  const direct = resolveColor(solidFill);
+  if (direct) return normalizeHex(direct);
+  const schemeToken = solidFill["a:schemeClr"]?.["@_val"];
+  return schemeToken ? resolveSchemeColor(schemeToken, clrMap, clrScheme) : null;
+}
+
+function parseTextStyle(style) {
+  const lvl1 = firstNode(style?.["a:lvl1pPr"]);
+  return {
+    pt: hundredthsToPt(lvl1?.["a:defRPr"]?.["@_sz"]),
+    align: lvl1?.["@_algn"] || null,
+  };
+}
+
+function normalizeAlign(value) {
+  if (value === "ctr") return "center";
+  if (value === "l") return "left";
+  if (value === "r") return "right";
+  return value || null;
+}
+
+/** slideMaster XML からタイトル/本文サイズ、タイトル揃え、背景色を抽出する。 */
+export function parseSlideMaster(xml, clrScheme = {}) {
+  if (!xml) return { titlePt: null, bodyPt: null, titleAlign: null, bgColorHex: null };
+  const doc = xmlParser.parse(xml);
+  const master = doc?.["p:sldMaster"] || {};
+  const clrMap = parseClrMap(master);
+  const bg = master?.["p:cSld"]?.["p:bg"];
+  const bgPr = bg?.["p:bgPr"];
+  const bgRef = bg?.["p:bgRef"];
+  const bgColorHex =
+    resolveSolidFillColor(bgPr?.["a:solidFill"], clrMap, clrScheme) ||
+    (bgRef?.["a:schemeClr"]?.["@_val"]
+      ? resolveSchemeColor(bgRef["a:schemeClr"]["@_val"], clrMap, clrScheme)
+      : null);
+
+  const txStyles = master?.["p:txStyles"] || {};
+  const title = parseTextStyle(txStyles["p:titleStyle"]);
+  const body = parseTextStyle(txStyles["p:bodyStyle"]);
+
+  return {
+    titlePt: title.pt,
+    bodyPt: body.pt,
+    titleAlign: normalizeAlign(title.align),
+    bgColorHex,
+  };
+}
+
 function hex(colors, key, fallback) {
   return colors[key] ? `#${colors[key]}` : fallback;
 }
@@ -119,23 +242,35 @@ export function slugify(text) {
 
 /** 抽出結果から corporate.css 互換の Marp テーマ CSS を生成する。 */
 export function renderThemeCss(themeName, parsed) {
-  const { colors, fonts } = parsed;
+  const { colors = {}, fonts = {}, sizes = {}, background } = parsed;
   const primary = hex(colors, "accent1", "#1f6feb");
   const secondary = hex(colors, "dk2", hex(colors, "accent2", "#0b3d91"));
   const accent = hex(colors, "accent3", hex(colors, "accent2", "#f0a202"));
-  const background = hex(colors, "lt1", "#ffffff");
+  const backgroundHex = normalizeHex(background);
+  const backgroundColor = backgroundHex ? `#${backgroundHex}` : hex(colors, "lt1", "#ffffff");
   const foreground = hex(colors, "dk1", "#22272e");
   const link = hex(colors, "hlink", primary);
   const fontBase = fontStack(fonts, "minor");
   const fontHeading = fontStack(fonts, "major");
   const srcName = parsed.name || "extracted";
+  const pxPerPt = sizes.pxPerPt ?? (1280 / (DEFAULT_SLIDE_SIZE_EMU.slideWidthEmu / 12700));
+  const bodyPt = sizes.bodyPt ?? 24;
+  const titlePt = sizes.titlePt ?? 40;
+  const bodyPx = Math.round(bodyPt * pxPerPt);
+  const titlePx = Math.round(titlePt * pxPerPt);
+  const titleRatio = titlePx / bodyPx;
+  const extractedDetails = [
+    sizes.titlePt != null ? `タイトル: ${sizes.titlePt}pt` : null,
+    sizes.bodyPt != null ? `本文: ${sizes.bodyPt}pt` : null,
+    backgroundHex ? `背景: #${backgroundHex}` : null,
+  ].filter(Boolean).join(" / ");
 
   return `/* @theme ${themeName} */
 
 /*
  * このテーマは extract-theme により PPTX から自動生成されました。
  * 元テーマ名: ${srcName}
- * 色やフォントは下記 :root の変数を編集して微調整できます。
+${extractedDetails ? ` * 抽出情報: ${extractedDetails}\n` : ""} * 色やフォントは下記 :root の変数を編集して微調整できます。
  */
 
 @import "default";
@@ -145,7 +280,7 @@ export function renderThemeCss(themeName, parsed) {
   --brand-secondary: ${secondary};
   --brand-accent: ${accent};
 
-  --color-background: ${background};
+  --color-background: ${backgroundColor};
   --color-foreground: ${foreground};
   --color-heading: var(--brand-secondary);
   --color-link: ${link};
@@ -164,7 +299,7 @@ section {
   color: var(--color-foreground);
   background-color: var(--color-background);
   padding: 60px 70px;
-  font-size: 26px;
+  font-size: ${bodyPx}px;
   line-height: 1.5;
 }
 
@@ -174,7 +309,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 h1 {
-  font-size: 1.9em;
+  font-size: ${titleRatio.toFixed(2)}em;
   border-bottom: 4px solid var(--brand-primary);
   padding-bottom: 0.2em;
 }
@@ -212,7 +347,7 @@ section.title {
 section.title h1 {
   color: #ffffff;
   border-bottom: none;
-  font-size: 2.4em;
+  font-size: ${(titleRatio * 1.4).toFixed(2)}em;
 }
 section.title h2, section.title h3 { color: rgba(255, 255, 255, 0.85); }
 
@@ -236,8 +371,20 @@ section.section h1, section.section h2 {
  * @returns {{ css:string, themeName:string, parsed:object }}
  */
 export function extractThemeFromPptx(pptxBytes, { name } = {}) {
-  const xml = readThemeXml(pptxBytes);
-  const parsed = parseThemeXml(xml);
+  const parts = readPptxXmlParts(pptxBytes);
+  const parsed = parseThemeXml(parts.themeXml);
+  const presentation = parsePresentation(parts.presentationXml);
+  const master = parseSlideMaster(parts.slideMasterXml, parsed.colors);
+  const slideWidthPt = presentation.slideWidthEmu / 12700;
+  const pxPerPt = 1280 / slideWidthPt;
+  parsed.presentation = presentation;
+  parsed.sizes = {
+    titlePt: master.titlePt,
+    bodyPt: master.bodyPt,
+    pxPerPt,
+  };
+  parsed.titleAlign = master.titleAlign;
+  parsed.background = master.bgColorHex;
   const themeName = slugify(name || parsed.name);
   const css = renderThemeCss(themeName, parsed);
   return { css, themeName, parsed };

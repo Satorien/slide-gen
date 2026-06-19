@@ -8,6 +8,8 @@ import assert from "node:assert/strict";
 import { zipSync, strToU8 } from "fflate";
 import {
   parseThemeXml,
+  parsePresentation,
+  parseSlideMaster,
   extractThemeFromPptx,
   renderThemeCss,
   slugify,
@@ -42,11 +44,46 @@ const THEME_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
   </a:themeElements>
 </a:theme>`;
 
-function makeFakePptx() {
-  return zipSync({
+const PRESENTATION_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:presentation xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+  <p:sldSz cx="12192000" cy="6858000"/>
+</p:presentation>`;
+
+const SLIDE_MASTER_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sldMaster xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"
+  xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
+  <p:cSld>
+    <p:bg>
+      <p:bgRef idx="1001">
+        <a:schemeClr val="bg1"/>
+      </p:bgRef>
+    </p:bg>
+  </p:cSld>
+  <p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2"
+    accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4"
+    accent5="accent5" accent6="accent6" hlink="hlink" folHlink="hlink"/>
+  <p:txStyles>
+    <p:titleStyle>
+      <a:lvl1pPr algn="ctr">
+        <a:defRPr sz="3600"/>
+      </a:lvl1pPr>
+    </p:titleStyle>
+    <p:bodyStyle>
+      <a:lvl1pPr>
+        <a:defRPr sz="2400"/>
+      </a:lvl1pPr>
+    </p:bodyStyle>
+  </p:txStyles>
+</p:sldMaster>`;
+
+function makeFakePptx({ includePresentation = true, includeMaster = true } = {}) {
+  const files = {
     "[Content_Types].xml": strToU8("<Types/>"),
     "ppt/theme/theme1.xml": strToU8(THEME_XML),
-  });
+  };
+  if (includePresentation) files["ppt/presentation.xml"] = strToU8(PRESENTATION_XML);
+  if (includeMaster) files["ppt/slideMasters/slideMaster1.xml"] = strToU8(SLIDE_MASTER_XML);
+  return zipSync(files);
 }
 
 test("parseThemeXml extracts colors with srgb and sysClr fallback", () => {
@@ -67,6 +104,21 @@ test("parseThemeXml extracts latin and Japanese fonts", () => {
   assert.equal(fonts.minor_ja, "Meiryo");
 });
 
+test("parsePresentation extracts slide size and falls back when missing", () => {
+  const parsed = parsePresentation(PRESENTATION_XML);
+  assert.equal(parsed.slideWidthEmu, 12192000);
+  assert.equal(parsed.slideHeightEmu, 6858000);
+  assert.deepEqual(parsePresentation(null), { slideWidthEmu: 12192000, slideHeightEmu: 6858000 });
+});
+
+test("parseSlideMaster extracts text sizes and resolves background scheme color", () => {
+  const parsed = parseSlideMaster(SLIDE_MASTER_XML, { lt1: "F7F8FA", dk1: "111111" });
+  assert.equal(parsed.titlePt, 36);
+  assert.equal(parsed.bodyPt, 24);
+  assert.equal(parsed.titleAlign, "center");
+  assert.equal(parsed.bgColorHex, "F7F8FA");
+});
+
 test("extractThemeFromPptx produces valid Marp theme CSS", () => {
   const bytes = makeFakePptx();
   const { css, themeName, parsed } = extractThemeFromPptx(bytes, { name: "My Brand" });
@@ -78,7 +130,23 @@ test("extractThemeFromPptx produces valid Marp theme CSS", () => {
   assert.match(css, /--color-link: #0000FF;/); // hlink
   assert.match(css, /"Calibri"/); // minor font in --font-base
   assert.match(css, /"Yu Gothic"/); // major_ja
+  assert.match(css, /--color-background: #FFFFFF;/);
+  assert.match(css, /section\s*\{[\s\S]*font-size: 32px;/);
+  assert.match(css, /h1\s*\{[\s\S]*font-size: 1\.5\d*em;/);
   assert.equal(parsed.colors.accent1, "4F81BD");
+  assert.equal(parsed.sizes.titlePt, 36);
+  assert.equal(parsed.sizes.bodyPt, 24);
+  assert.equal(parsed.background, "FFFFFF");
+});
+
+test("extractThemeFromPptx falls back when presentation and master XML are absent", () => {
+  const bytes = makeFakePptx({ includePresentation: false, includeMaster: false });
+  const { css, parsed } = extractThemeFromPptx(bytes, { name: "Theme Only" });
+  assert.match(css, /\/\* @theme theme-only \*\//);
+  assert.match(css, /section\s*\{[\s\S]*font-size: \d+px;/);
+  assert.equal(parsed.sizes.titlePt, null);
+  assert.equal(parsed.sizes.bodyPt, null);
+  assert.equal(parsed.background, null);
 });
 
 test("slugify normalizes names", () => {
