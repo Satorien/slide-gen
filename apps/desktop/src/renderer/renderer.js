@@ -20,6 +20,32 @@ const els = {
 
 const state = { path: null, dirty: false };
 
+// フロントマターの theme: を themeName に設定して返す(無ければ挿入/フロントマターごと作成)。
+function applyThemeToFrontmatter(md, themeName) {
+  if (!themeName) return md;
+  const m = /^---\r?\n([\s\S]*?)\r?\n---/.exec(md);
+  if (m) {
+    const block = m[1];
+    let newBlock;
+    if (/^theme:.*$/m.test(block)) {
+      newBlock = block.replace(/^theme:.*$/m, `theme: ${themeName}`);
+    } else {
+      newBlock = `theme: ${themeName}\n${block}`;
+    }
+    return md.replace(m[0], `---\n${newBlock}\n---`);
+  }
+  // フロントマター無し: 付与する
+  return `---\nmarp: true\ntheme: ${themeName}\npaginate: true\n---\n\n${md}`;
+}
+
+// フロントマターから theme 値を取り出す(無ければ null)。
+function readFrontmatterTheme(md) {
+  const m = /^---\r?\n([\s\S]*?)\r?\n---/.exec(md);
+  if (!m) return null;
+  const t = /^theme:\s*(.+?)\s*$/m.exec(m[1]);
+  return t ? t[1] : null;
+}
+
 const SAMPLE = `---
 marp: true
 theme: corporate
@@ -140,7 +166,14 @@ els.editor.addEventListener("keydown", (e) => {
   }
 });
 
-els.theme.addEventListener("change", renderPreview);
+els.theme.addEventListener("change", () => {
+  const next = applyThemeToFrontmatter(els.editor.value, els.theme.value);
+  if (next !== els.editor.value) {
+    els.editor.value = next;
+    state.dirty = true;
+  }
+  renderPreview();
+});
 
 els.refresh.addEventListener("click", () => {
   clearTimeout(renderTimer);
@@ -153,6 +186,8 @@ els.open.addEventListener("click", async () => {
   els.editor.value = res.content;
   setFile(res.path);
   state.dirty = false;
+  const ft = readFrontmatterTheme(res.content);
+  if (ft) await loadThemes(ft);
   await renderPreview();
   setStatus("読み込みました", "ok");
 });
@@ -188,8 +223,13 @@ els.importTheme.addEventListener("click", async () => {
   if (res?.canceled) return;
   if (res?.error) return setStatus(`取込エラー: ${res.error}`, "err");
   await loadThemes(res.name);
+  const applied = applyThemeToFrontmatter(els.editor.value, res.name);
+  if (applied !== els.editor.value) {
+    els.editor.value = applied;
+    state.dirty = true;
+  }
   await renderPreview();
-  setStatus(`テーマ "${res.name}" を取り込みました`, "ok");
+  setStatus(`テーマ "${res.name}" を取り込み・適用しました`, "ok");
 });
 
 // --- init ---
