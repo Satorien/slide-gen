@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="Slide Generator app icon">
+  <defs>
+    <linearGradient id="badge" x1="192" y1="128" x2="832" y2="896" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2f81f7"/>
+      <stop offset="1" stop-color="#1f6feb"/>
+    </linearGradient>
+    <filter id="shadow" x="128" y="112" width="768" height="824" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="32" stdDeviation="32" flood-color="#0b2f6b" flood-opacity=".26"/>
+    </filter>
+  </defs>
+  <rect width="1024" height="1024" rx="220" fill="url(#badge)"/>
+  <g filter="url(#shadow)">
+    <rect x="244" y="258" width="536" height="380" rx="46" fill="#fff"/>
+    <rect x="300" y="314" width="424" height="268" rx="24" fill="#eaf3ff"/>
+    <rect x="340" y="360" width="230" height="34" rx="17" fill="#1f6feb"/>
+    <rect x="340" y="430" width="304" height="28" rx="14" fill="#79c0ff"/>
+    <rect x="340" y="494" width="176" height="28" rx="14" fill="#79c0ff"/>
+    <rect x="568" y="480" width="96" height="64" rx="16" fill="#1f6feb"/>
+    <path d="M512 638v94" stroke="#fff" stroke-width="48" stroke-linecap="round"/>
+    <path d="M408 778h208" stroke="#fff" stroke-width="48" stroke-linecap="round"/>
+    <path d="M452 726h120" stroke="#fff" stroke-width="40" stroke-linecap="round"/>
+  </g>
+</svg>
